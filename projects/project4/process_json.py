@@ -5,6 +5,9 @@ from pprint import pprint
 
 import matplotlib.pyplot as plt
 import datetime
+from shapely.geometry import Point, Polygon
+
+import coordinates
 
 
 def extract_date_from_file(filename):
@@ -24,8 +27,8 @@ def get_all_bikes_by_places(nb: list) -> dict[str, list]:
     bicycle_stations = {}
 
     for p in nb:
-        place_name = p['station name']
-        bike_list = p['bikes']
+        place_name = p["station name"]
+        bike_list = p["bikes"]
         bicycle_stations[place_name]= bike_list
 
     return bicycle_stations
@@ -48,9 +51,16 @@ def draw_station_bike_amount(station_bike_amount, file_path):
     ax.set_title(f'Total bikes: {total_bike_amount} ' + title_of_plot)
     plt.xticks(rotation = 90, size=4)
     plt.savefig('./output_data/' + needed_part + '.jpg')
+    plt.close()
 
 
 def main():
+    areas = {
+        'Hisingen' : coordinates.areas['Hisingen'],
+        'City center': coordinates.areas['City center'],
+        'Molndal' : coordinates.areas['Molndal']
+    }
+
     compact_json_path = './output_data/compact_jsonFiles.json'
     dict_of_compact_items = []
     with open(compact_json_path, 'r') as fileName:
@@ -58,8 +68,29 @@ def main():
     # print(dict_of_compact_items)
      
     total_number_of_bikes = {}
+    total_number_of_lost_bike = {}
+    area_stations = {area: []  for area in areas.keys()}
+    area_stations['Other'] = []
+
     for file_name, nb in dict_of_compact_items.items():  
         print(f'Processing {file_name}')
+        for element in nb:
+            station_name = element["station name"]
+            nb_values = element["station coordinates"]
+            appended = False
+
+            for area_name, area_polygon in areas.items():
+                if Point(nb_values).within(area_polygon):
+                    area_stations[area_name].append(station_name)
+                    appended = True
+                    break
+
+            if not appended:
+                area_stations['Other'].append(station_name)
+        break
+
+    pprint(area_stations)
+    for file_name, nb in dict_of_compact_items.items():  
         # nb = read_nextbike_json(file_name)
         station_bikes = get_all_bikes_by_places(nb)
 
@@ -71,6 +102,24 @@ def main():
         draw_station_bike_amount(eliminated_bike_list, file_name)
 
         total_number_of_bikes[extract_date_from_file(file_name)] = sum(eliminated_bike_list.values())
+
+        lost_bike_number = len([
+            station_name
+            for station_name in station_bikes.keys()
+            if station_name.startswith('BIKE')
+        ])
+        total_number_of_lost_bike[file_name] = lost_bike_number
+
+        fig, ax = plt.subplots(figsize=(16, 9))
+        ax.bar(
+            total_number_of_lost_bike.keys(),
+            total_number_of_lost_bike.values(),
+        )   
+        ax.set_title(f'Total lost bike list: {sum(total_number_of_lost_bike.values())}')
+        plt.xticks(rotation = 90, size=4)
+        plt.savefig('./output_data/' + 'lost bike list.jpg')
+
+
     max_number_of_bikes = max(total_number_of_bikes.values())
 
     current_use_of_bicycles = {
@@ -93,6 +142,7 @@ def main():
     plt.xticks(rotation = 90, size=4)
     plt.savefig('./output_data/'+'Current Use of Bicycle on Monday'+ '.jpg')
 
+        
 if __name__ == '__main__':
     main()
  

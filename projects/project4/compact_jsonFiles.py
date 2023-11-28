@@ -5,6 +5,7 @@ from pprint import pprint
 
 import matplotlib.pyplot as plt
 
+
 def read_nextbike_json(path: str) -> dict:
     with open(path, 'rb') as f:
         json_str = gzip.decompress(f.read())
@@ -76,8 +77,6 @@ if __name__ == '__main__':
 #         },
 #     ]
 # }
-
-# # Here is my story how I would do that (it is NOT a code!!):
 
 # result_dict = {}
 
